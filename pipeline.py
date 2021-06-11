@@ -3,6 +3,7 @@ import os
 import random
 # 3rd party
 import cv2
+import numpy
 # tensorflow
 import tensorflow as tf
 
@@ -63,58 +64,34 @@ def load_and_preprocess_augment(_image_path, _label_path, choice):
 
 
 
-def show_image_tf2(__image, message):
-	with tf.compat.v1.Session() as sess:
-		image_rgb_float = sess.run(__image)
-		plt.imshow(image_rgb_float)
-		plt.title(message)
-		plt.show()
-
-
-
 
 def get_dataloader(opt):
 
 	image_list = os.listdir(os.path.join(opt.dataset_dir, opt.input_dir))
 	assert image_list == os.listdir(os.path.join(opt.dataset_dir, opt.label_dir)), "images are not paired in {} and {}".format(opt.input_dir, opt.label_dir)
 	
-	train_list = random.sample(image_list, int(opt.train_ratio * len(image_list)))
-	valid_list = list(set(image_list) - set(train_list))
+	random.shuffle(image_list)
+	train_size = int(opt.dataset_ratios[0] * len(image_list))
+	train_list = image_list[:train_size]
+	valid_list = image_list[train_size:]
+
 	train_image_list = [os.path.join(opt.dataset_dir, opt.input_dir, it) for it in train_list]
 	train_label_list = [os.path.join(opt.dataset_dir, opt.label_dir, it) for it in train_list]
 	valid_image_list = [os.path.join(opt.dataset_dir, opt.input_dir, it) for it in valid_list]
 	valid_label_list = [os.path.join(opt.dataset_dir, opt.label_dir, it) for it in valid_list]
-	
-	# 如果还需要划分测试集
-	if(opt.with_testdataset == True):
-		test_image_list = train_image_list[:len(valid_list)]
-		test_label_list = train_label_list[:len(valid_list)]
-		train_image_list = train_image_list[len(valid_list):]
-		train_label_list = train_label_list[len(valid_list):]
 
 	print('train  :  {}\nvalid  :  {}'.format(len(train_list), len(valid_list)))
-	if(opt.with_testdataset == True): 
-		print('test  :  {}'.format(len(test_image_list)))
-
+	
 	# 数据集有点大的时候, 一开始存储路径, 每次用 map 函数读取和预处理图像; 注意 buffer_size 不能太大
 	train_data = tf.data.Dataset.from_tensor_slices((train_image_list, train_label_list))
 	train_data = train_data.map(lambda x, y: \
-		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize, opt.flip, False]], Tout=[tf.float32, tf.float32]))
+		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize, True, True]], Tout=[tf.float32, tf.float32]))
 	train_dataloader = train_data.shuffle(opt.buffer_size).batch(opt.train_batch_size)
 
 	valid_data = tf.data.Dataset.from_tensor_slices((valid_image_list, valid_label_list))
 	valid_data = valid_data.map(lambda x, y: \
 		tf.py_function(load_and_preprocess, inp=[x, y, [opt.resize]], Tout=[tf.float32, tf.float32]))
-	valid_dataloader = valid_data.batch(opt.valid_batch_size)
-	# .cache(filename='./cache.tf-data') tensorflow 有缓存技术可以加速
+	valid_dataloader = valid_data.batch(opt.valid_batch_size).repeat(opt.valid_repeat)
+	print(len(valid_dataloader))
 
-
-	if(opt.with_testdataset == False):
-		return train_dataloader, valid_dataloader, len(train_list), len(valid_list)
-	else:
-		test_data = tf.data.Dataset.from_tensor_slices((test_image_list, test_label_list))
-		test_data = test_data.map(lambda x, y: load_and_preprocess(x, y, opt))
-		test_dataloader = test_data.batch(opt.valid_batch_size)
-		return train_dataloader, valid_dataloader, test_dataloader, len(train_list), len(valid_list), len(test_image_list)
-
-	
+	return train_dataloader, valid_dataloader, len(train_list), len(valid_list)

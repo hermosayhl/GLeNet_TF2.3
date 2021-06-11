@@ -24,6 +24,20 @@ This repo is based on official code [GleNet](https://github.com/dongkwonjin/GleN
 
 
 
+
+
+
+
+## Data
+
+使用的是 [MIT-Adobe FiveK](https://data.csail.mit.edu/graphics/fivek/) 数据集的 **ExpertC** 图像对。本实验采用的 512px 分辨率（长宽最大 512，按比例下采样）的图像，下载链接如下：
+
+1. [one drive](https://bupteducn-my.sharepoint.com/:u:/g/personal/fluence_dyf_bupt_edu_cn/EbbaJoJVSG9Guh5TWMLCXw8B0DkHPMwCGZ9QQeUtm6pwSA?e=FovmfI)
+
+也可以使用其他数据集，低光照的数据集，比如 LOL 等。
+
+
+
 ## Train
 
 
@@ -38,9 +52,21 @@ This repo is based on official code [GleNet](https://github.com/dongkwonjin/GleN
 
 **papers**:
 
-1. Kim, Hanul et al. “Global and Local Enhancement Networks for Paired and Unpaired Image Enhancement.” *ECCV* (2020).
+1. Kim, Hanul et al. “*Global and Local Enhancement Networks for Paired and Unpaired Image Enhancement*.” *ECCV* (2020).
+2. Bychkovsky V, Paris S, Chan E, et al. *Learning photographic global tonal adjustment with a database of input/output image pairs*[C]//CVPR 2011. IEEE, 2011: 97-104.
 
 **github**:
 
 1. [GLeNet](https://github.com/dongkwonjin/GleNet)
+
+**Dataset**
+
+```txt
+@inproceedings{fivek,
+	author = "Vladimir Bychkovsky and Sylvain Paris and Eric Chan and Fr{\'e}do Durand",
+	title = "Learning Photographic Global Tonal Adjustment with a Database of Input / Output Image Pairs",
+	booktitle = "The Twenty-Fourth IEEE Conference on Computer Vision and Pattern Recognition",
+	year = "2011"
+}
+```
 

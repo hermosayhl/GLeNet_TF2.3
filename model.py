@@ -1,12 +1,14 @@
 
 # Tensorflow
+import utils
+utils.set_evironments(seed=212)
 import tensorflow as tf
+
 
 
 ###########################################################################
 #                                Network
 ###########################################################################
-
 
 
 # 设定初始化
@@ -32,10 +34,10 @@ class InvertedResidualBlock(tf.keras.layers.Layer):
 
 		self.conv_layer1 = tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(filters, 1, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.BatchNormalization(),
+			tf.keras.layers.LayerNormalization(),
 			SwichActivation(),
 			tf.keras.layers.DepthwiseConv2D(kernel_size, strides, padding='same', use_bias=False, depthwise_initializer=KERNEL_INITIALIZER, depthwise_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.BatchNormalization(),
+			tf.keras.layers.LayerNormalization(),
 			SwichActivation()
 		])
 
@@ -54,7 +56,7 @@ class InvertedResidualBlock(tf.keras.layers.Layer):
 
 		self.conv_layer2 = tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(filters_out, 1, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.BatchNormalization()
+			tf.keras.layers.LayerNormalization()
 		])
 
 
@@ -75,9 +77,8 @@ class GEN(tf.keras.layers.Layer):
 		super(GEN, self).__init__()
 
 		self.conv1 = tf.keras.models.Sequential([
-			tf.keras.layers.Lambda(tf.image.resize, arguments={'size': [256, 256]}),
 			tf.keras.layers.Conv2D(16, 5, padding='same', use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.BatchNormalization(),
+			tf.keras.layers.LayerNormalization(),
 			SwichActivation()
 		])
 
@@ -90,7 +91,7 @@ class GEN(tf.keras.layers.Layer):
 
 		self.conv2 =  tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(768, 1, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER, name='GEN_stage6_conv'),
-			tf.keras.layers.BatchNormalization(),
+			tf.keras.layers.LayerNormalization(),
 			SwichActivation(),
 			tf.keras.layers.GlobalAveragePooling2D(),
 			tf.keras.layers.Dense(768, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
@@ -140,8 +141,10 @@ class IntensitiyTransform(tf.keras.layers.Layer):
 
 
 class GleNet(tf.keras.Model):
-	def __init__(self, backbone='GEN', residual=False, **kwargs):
+	def __init__(self, backbone='GEN', residual=False, low_size=[256, 256], **kwargs):
 		super(GleNet, self).__init__()
+
+		self.down_sampler = tf.keras.layers.Lambda(tf.image.resize, arguments={'size': low_size})
 		
 		# 求解 3 x 256 个值
 		self.regressor = eval(backbone)(**kwargs)
@@ -152,9 +155,20 @@ class GleNet(tf.keras.Model):
 
 
 	def call(self, inputs, training=False):
+
+		x = self.down_sampler(inputs)
 		
-		x = self.regressor(inputs)
+		x = self.regressor(x)
 
 		x = self.curve_enhancer([inputs, x])
 
 		return x if(not self.residual) else x + inputs
+
+
+
+if __name__ == '__main__':
+
+	
+	network = GleNet(residual=True)
+
+	network.build(input_shape=(4, 224, 256, 3))

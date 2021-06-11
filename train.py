@@ -3,70 +3,53 @@ import os
 import sys
 import random
 import argparse
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-# 3rd party 
-import numpy
-import tensorflow as tf
-print('tensorflow  :  {}'.format(tf.__version__))
 # Self
+import utils
+utils.set_evironments(seed=212)
 import model
 import evaluate
 import pipeline
-
-# 去除一些 future warning
-old_v = tf.compat.v1.logging.get_verbosity()
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-# 设定 GPU
-gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-print('GPU  :  {}'.format(gpus))
-# 动态申请显存, 需要多少, 申请多少
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
+# 3rd party 
+import numpy
+import tensorflow as tf
 
 
+# 参数
+opt = lambda: None
+# 网络参数
+opt.backbone = "GEN"
+opt.residual = True
+opt.low_size = [256, 256]
+# 训练参数
+opt.use_cuda = True
+opt.lr = 1e-2
+opt.total_epochs = 100
+opt.train_batch_size = 1
+opt.valid_batch_size = 1
+opt.valid_repeat = 4
+opt.resize = False
+opt.buffer_size = 32
+# 实验参数
+opt.exp_name = "simple"
+opt.save = True
+opt.valid_interval = 1
+opt.checkpoints_dir = os.path.join("./checkpoints/", opt.exp_name)
+opt.dataset_name = 'fivek'
+opt.dataset_ratios = [0.9, 0.1]
+opt.input_dir = "input"
+opt.label_dir = "expertC_gt"
+opt.dataset_dir = '/home/cgy/Chang/image_enhancement/datasets/fiveK'
+# opt.dataset_dir = "C:/Code/HermosaWork/datasets/MIT-Adobe FiveK"
+# 可视化参数
+opt.visualize_size = 16
+opt.visualize_batch = 100
+opt.visualize_dir = os.path.join(opt.checkpoints_dir, './train_phase') 
 
 
-
-
-
-
-
-
-###########################################################################
-#                                 config
-###########################################################################
-
-def get_args():
-	parser = argparse.ArgumentParser()
-	parser.add_argument("--dataset_dir", type=str, default='/home/cgy/Chang/image_enhancement/datasets/fiveK', help="dirs of paired images for training")
-	parser.add_argument("--input_dir", type=str, default='input', help="dirs of noise images")
-	parser.add_argument("--label_dir", type=str, default='expertC_gt', help="dirs of retouched images")
-	parser.add_argument("--buffer_size", type=int, default=128, help="buffer foor restrore images to forward")
-	parser.add_argument("--new_size", type=tuple, default=(None, None), help="if resize, the size of image")
-	parser.add_argument("--resize", type=bool, default=False, help="whether to resize images")
-	parser.add_argument("--crop", type=bool, default=True, help="whether to crop images")
-	parser.add_argument("--flip", type=bool, default=True, help="whether to flip images")
-	parser.add_argument("--train_ratio", type=float, default=0.9, help="percentage of training images")
-	parser.add_argument("--train_batch_size", type=int, default=1, help="batch size for training")
-	parser.add_argument("--valid_batch_size", type=int, default=1, help="batch size for validation")
-	parser.add_argument("--lr", type=float, default=3e-4, help="learning rate for update gradient")
-	parser.add_argument("--save_interval", type=int, default=1, help="interval for validation")
-	parser.add_argument("--checkpoints_dir", type=str, default='./checkpoints/GleNet_simple_notResized', help="where to save trained models")
-	parser.add_argument("--total_epochs", type=int, default=100, help="total nums of epoch")
-	parser.add_argument("--with_testdataset", type=bool, default=False, help="whether to test")
-	parser.add_argument("--network", type=str, default="GleNet", help="network architecture")
-	parser.add_argument("--backbone", type=str, default="GEN", help="base network for 768 values")
-	parser.add_argument("--residual", type=bool, default=True, help="whether to make residual connection")
-	parser.add_argument("--save", type=bool, default=True, help="whether to save models")
-	opt = parser.parse_args()
-	if(opt.new_size == (None, None)): opt.resize = False
-	if(opt.resize == True): opt.new_size = (256, 256)
-	for l, r in vars(opt).items(): print('{}  :  {}'.format(l, r))
-	return opt
-
-
+for l, r in vars(opt).items(): print(l, " : ", r)
+os.makedirs(opt.checkpoints_dir, exist_ok=True)
+os.makedirs(opt.visualize_dir, exist_ok=True)
+assert os.path.exists(opt.dataset_dir), "dataset for low/high quality image pairs doesn't exist !"
 
 
 
@@ -76,15 +59,12 @@ def get_args():
 
 if __name__ == '__main__':
 
-	# 解析一些参数设置
-	opt = get_args()
-
 	# 获取数据读取器
 	train_dataloader, valid_dataloader, train_len, valid_len = pipeline.get_dataloader(opt)
 
 	# 定义网络结构
-	network = model.GleNet(backbone=opt.backbone, residual=opt.residual)
-	network.build(input_shape=(None, *opt.new_size, 3))
+	network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size)
+	network.build(input_shape=(None, None, None, 3))
 
 	# 参数变量
 	parameters = network.trainable_variables
