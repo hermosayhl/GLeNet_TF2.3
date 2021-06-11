@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
 		# 每隔多少个 epoch 验证一次
 		if(epoch % opt.valid_interval == 0):
-			valid_evaluator = GleNetEvaluator()
+			valid_evaluator = evaluate.GleNetEvaluator()
 			for batch_num, (_image, _label) in enumerate(valid_dataloader, 1):
 				# 经过网络
 				enhanced = network(_image)
