@@ -22,7 +22,7 @@ opt.residual = True
 opt.low_size = [256, 256]
 # 训练参数
 opt.use_cuda = True
-opt.lr = 1e-2
+opt.lr = 3e-4
 opt.total_epochs = 100
 opt.train_batch_size = 1
 opt.valid_batch_size = 1
@@ -43,7 +43,7 @@ opt.dataset_dir = '/home/cgy/Chang/image_enhancement/datasets/fiveK'
 # 可视化参数
 opt.visualize_size = 16
 opt.visualize_batch = 100
-opt.visualize_dir = os.path.join(opt.checkpoints_dir, './train_phase') 
+opt.visualize_dir = os.path.join(opt.checkpoints_dir, 'train_phase') 
 
 
 for l, r in vars(opt).items(): print(l, " : ", r)
@@ -75,12 +75,14 @@ if __name__ == '__main__':
 	# 保存的路径
 	os.makedirs(opt.checkpoints_dir, exist_ok=True)
 
+	# 评测, 计算损失
+	train_evaluator = evaluate.GleNetEvaluator()
+
+
 	# 开始训练
-	max_psnr, max_ssim = 0.0, 0.0
-	max_epoch = 0
 	for epoch in range(1, opt.total_epochs + 1):
 		# 训练一个 epoch
-		mean_psnr, mean_ssim, mean_loss = 0, 0, 0
+		train_evaluator.clear()
 		# 读取数据
 		for batch_num, (_image, _label) in enumerate(train_dataloader, 1):
 			# 设置自动求导
@@ -88,57 +90,39 @@ if __name__ == '__main__':
 				# 经过网络
 				enhanced = network(_image)
 				# 计算损失
-				loss_value = tf.reduce_mean(tf.square(_label - enhanced))
-				# 计算 PSNR
-				psnr_value = evaluate.compute_psnr(enhanced, _label)
-				ssim_value = evaluate.compute_ssim(enhanced, _label)
-				# 统计一些值
-				mean_loss += loss_value
-				mean_psnr += psnr_value
-				mean_ssim += ssim_value
+				loss_value = train_evaluator.update(_label, enhanced)
 			# 计算梯度
 			grad = tape.gradient(loss_value, parameters)
 			# 梯度更新
 			optimizer.apply_gradients(zip(grad, parameters))
 			# 输出一些信息
-			sys.stdout.write('\r[Train===> epoch {}/{}] [batch {}/{}] [loss {:.5f}] [psnr {:.3f} - mean {:.3f}] [ssim {:.3f} - mean {:.3f}]'.format(
+			sys.stdout.write('\r[Train===> epoch {}/{}] [batch {}/{}] [loss {:.4f}] [color {:.3f}] [perceptual {:.3f}] [psnr {:.3f}] [ssim {:.3f}]'.format(
 				epoch, opt.total_epochs, batch_num * opt.train_batch_size, train_len, \
-				loss_value * (255 ** 2), \
-				psnr_value, mean_psnr / batch_num, \
-				ssim_value, mean_ssim / batch_num))
+				*train_evaluator.get()))
 			
-		train_psnr, train_ssim = mean_psnr / batch_num, mean_ssim / batch_num
+		train_loss, train_color_loss, train_perceptual_loss, train_psnr, train_ssim = train_evaluator.get()
 		print()
 
 
 		# 每隔多少个 epoch 验证一次
-		if(epoch % opt.save_interval == 0):
-			mean_psnr = 0
-			mean_ssim = 0
+		if(epoch % opt.valid_interval == 0):
+			valid_evaluator = GleNetEvaluator()
 			for batch_num, (_image, _label) in enumerate(valid_dataloader, 1):
 				# 经过网络
 				enhanced = network(_image)
-				# 计算 PSNR
-				psnr_value = evaluate.compute_psnr(enhanced, _label)
-				ssim_value = evaluate.compute_ssim(enhanced, _label)
-				# 统计一些值
-				mean_psnr += psnr_value
-				mean_ssim += ssim_value
+				# 计算损失
+				loss_value = valid_evaluator.update(_label, enhanced)
 				# 输出一些信息
-				sys.stdout.write('\r[Valid===> epoch {}/{}] [batch {}/{}] [psnr {:.3f} - mean {:.3f}] [ssim {:.3f} - mean {:.3f}]'.format(
+				sys.stdout.write('\r[Valid===> epoch {}/{}] [batch {}/{}] [loss {:.4f}] [color {:.3f}] [perceptual {:.3f}] [psnr {:.3f}] [ssim {:.3f}]'.format(
 					epoch, opt.total_epochs, batch_num * opt.valid_batch_size, valid_len, \
-					psnr_value, mean_psnr / batch_num, \
-					ssim_value, mean_ssim / batch_num))
+					*valid_evaluator.get()))
 			# 记录当前最好的结果
-			valid_psnr, valid_ssim = mean_psnr / batch_num, mean_ssim / batch_num
-			if(valid_psnr > max_psnr): 
-				max_psnr, max_epoch = valid_psnr, epoch
-			if(valid_ssim > max_ssim): 
-				max_ssim = valid_ssim
+			valid_loss, valid_color_loss, valid_perceptual_loss, valid_psnr, valid_ssim = valid_evaluator.get()
+			
 			# 保存模型
 			if(opt.save == True):
-				save_name = "GleNet_epoch_{}_train_{:.3f}_{:.3f}_valid_{:.3f}_{:.3f}_maxepoch_{}".format(
-					epoch, train_psnr, train_ssim, valid_psnr, valid_ssim, max_epoch)
+				save_name = "epoch_{}_train_{:.3f}_{:.3f}_valid_{:.3f}_{:.3f}".format(
+					epoch, train_psnr, train_ssim, valid_psnr, valid_ssim)
 				os.makedirs(os.path.join(opt.checkpoints_dir, save_name), exist_ok=True)
 				to_save = os.path.join(opt.checkpoints_dir, save_name, "GleNet")
 				print('to_save  :  {}'.format(to_save))

@@ -162,7 +162,9 @@ class GleNet(tf.keras.Model):
 
 		x = self.curve_enhancer([inputs, x])
 
-		return x if(not self.residual) else x + inputs
+		refined = x if(not self.residual) else x + inputs
+
+		return tf.clip_by_value(refined, 0, 1)
 
 
 

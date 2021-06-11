@@ -12,16 +12,24 @@ import numpy
 
 
 def set_evironments(seed=212):
-	
-	# 设定随机数、GPU、log 级别
-	random.seed(seed)
-	numpy.random.seed(seed)
-	os.environ['PYTHONHASHSEED'] = str(seed)
+
+	# GPU、log 级别
 	os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 	os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-	# Tensorflow
+	
+	# 设定随机数, 虽然并没有什么用, tensorflow 2.3 不支持
+	random.seed(seed)
+	numpy.random.seed(seed)
+	
+	os.environ['PYTHONHASHSEED'] = str(seed)
+	os.environ['TF_DETERMINISTIC_OPS'] = '1'
+	os.environ['TF_CUDNN_DETERMINISTIC']='1'
+	os.environ['TF_KERAS'] = '1'
+	os.environ['PYTHONHASHSEED'] = str(seed)
 	import tensorflow as tf
+	tf.random.set_seed(seed)
+
+	# tensorflow
 	print('tensorflow  :  {}'.format(tf.__version__))
 	# 去除一些 future warning
 	old_v = tf.compat.v1.logging.get_verbosity()
