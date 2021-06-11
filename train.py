@@ -91,6 +91,7 @@ if __name__ == '__main__':
 				enhanced = network(_image)
 				# 计算损失
 				loss_value = train_evaluator.update(_label, enhanced)
+				# 这里可以加一个感知损失, 就用我那个卷积分类的特征, 可视化下特征
 			# 计算梯度
 			grad = tape.gradient(loss_value, parameters)
 			# 梯度更新
@@ -99,7 +100,7 @@ if __name__ == '__main__':
 			sys.stdout.write('\r[Train===> epoch {}/{}] [batch {}/{}] [loss {:.4f}] [color {:.3f}] [perceptual {:.3f}] [psnr {:.3f}] [ssim {:.3f}]'.format(
 				epoch, opt.total_epochs, batch_num * opt.train_batch_size, train_len, \
 				*train_evaluator.get()))
-			
+
 		train_loss, train_color_loss, train_perceptual_loss, train_psnr, train_ssim = train_evaluator.get()
 		print()
 
