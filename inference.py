@@ -27,11 +27,11 @@ opt.resize = False
 # 实验参数
 opt.images_dir = "./sample_imgs"
 opt.results_dir = "./sample_results"
-opt.checkpoints_file = "./checkpoints/simple/epoch_14_train_22.727_0.845_valid_22.538_0.845/GleNet"
+opt.checkpoints_file = "./checkpoints/simple/epoch_13_train_22.606_0.844_valid_22.518_0.845/GleNet"
 for l, r in vars(opt).items(): print(l, " : ", r)
 os.makedirs(opt.results_dir, exist_ok=True)
 assert os.path.exists(opt.images_dir), "there are no images in folder {}".format(opt.images_dir)
-assert os.path.exists(os.path.dirname(opt.checkpoints_file)), "checkpoints folder {} doesn't exist !".format(opt.checkpoints_file)
+# assert os.path.exists(opt.checkpoints_file), "checkpoints_file {} doesn't exist !".format(opt.checkpoints_file)
 
 
 network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size)
@@ -55,7 +55,7 @@ with utils.Timer() as time_scope:
 	for cnt, image_path in enumerate(images_list, 1):
 		origin = cv2.imread(image_path)
 		origin_tensor = pre_transform(origin)
-		enhanced = network(origin_tensor, is_training=False)
+		enhanced = network(origin_tensor)
 		save_name = os.path.join(opt.results_dir, os.path.split(image_path)[-1])
 		cv2.imwrite(save_name, post_transform(enhanced))
 		print('{}/{}===>  processing {} and saved to {}'.format(cnt, len(images_list), image_path, save_name))
