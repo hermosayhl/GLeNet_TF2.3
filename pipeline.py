@@ -76,6 +76,12 @@ def load_and_preprocess_augment(_image_path, _label_path, choice):
 	# 作数据增强
 	low_quality, high_quality = make_augment(low_quality, high_quality)
 
+	# 是否要规范输入大小
+	if(choice[0] == True):
+		low_quality = cv2.resize(low_quality, (256, 256))
+		high_quality = cv2.resize(high_quality, (256, 256))
+
+	# numpy -> tensor
 	low_quality = tf.convert_to_tensor(low_quality * 1. / 255, dtype=tf.float32)
 	high_quality = tf.convert_to_tensor(high_quality * 1. / 255, dtype=tf.float32)
 	
@@ -109,7 +115,7 @@ def get_dataloader(opt):
 
 	valid_data = tf.data.Dataset.from_tensor_slices((valid_image_list, valid_label_list))
 	valid_data = valid_data.map(lambda x, y: \
-		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize]], Tout=[tf.float32, tf.float32]))
+		tf.py_function(load_and_preprocess_augment, inp=[x, y, [False]], Tout=[tf.float32, tf.float32]))
 	valid_dataloader = valid_data.batch(opt.valid_batch_size).repeat(opt.valid_repeat)
 
 	return train_dataloader, valid_dataloader, len(train_list), len(valid_list)
