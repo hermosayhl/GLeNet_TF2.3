@@ -10,21 +10,28 @@ This repo is based on official code [GleNet](https://github.com/dongkwonjin/GleN
 
 
 
+目前只写了 GEN 全局增强网络部分；后面的 LEN 局部增强网络就一个 Unet 也没啥创新。其实，之前复现实验发现局部增强网络 LEN 就可以达到 25 的效果了，GEN + LEN 也就高个 0.3db 左右。估计就是全局网络求解一个近似值，然后 Unet 补一补。如果最后可以加一些平滑损失什么的，可能可以减少块效应。
+
+损失函数 ，没啥好说的，MSE 和一个感知损失？感知损失没用。imagenet 训练的图片都相对单调，用在 fivek 这种相对复杂场景下不合适。只用了 MSE 做了个初步实验，结果过拟合了，训练 25.4db，测试 23.8db，不到 24。
+
+近期事多，暂且搁置这个 repo，后面有时间再更新吧
+
 
 
 ## 环境
 
-
-
-
+- Python3.7
+- Tensorflow 2.3.0
+- scikit-image 0.15.0
+- ...
 
 
 
 ## Inference
 
-
-
-
+```shell
+python inference.py
+```
 
 
 
@@ -40,11 +47,23 @@ This repo is based on official code [GleNet](https://github.com/dongkwonjin/GleN
 
 ## Train
 
+```shell
+python train.py
+```
+
+or
+
+```shell
+python weighted_train.py
+```
+
 
 
 ## Validation
 
-
+```shell
+python test.py
+```
 
 
 

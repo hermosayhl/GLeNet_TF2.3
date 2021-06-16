@@ -6,6 +6,8 @@ import cv2
 import numpy
 # tensorflow
 import tensorflow as tf
+# self
+import utils
 
 
 
@@ -76,40 +78,78 @@ def load_and_preprocess_augment(_image_path, _label_path, choice):
 	# 作数据增强
 	low_quality, high_quality = make_augment(low_quality, high_quality)
 
+	# 是否要规范输入大小
+	if(choice[0] == True):
+		low_quality = cv2.resize(low_quality, (256, 256))
+		high_quality = cv2.resize(high_quality, (256, 256))
+
+	# numpy -> tensor
 	low_quality = tf.convert_to_tensor(low_quality * 1. / 255, dtype=tf.float32)
 	high_quality = tf.convert_to_tensor(high_quality * 1. / 255, dtype=tf.float32)
 	
-	return low_quality, high_quality
+	return low_quality, high_quality, _image_path
 
 
 
 
-def get_dataloader(opt):
-
+def get_datalist(opt):
 	image_list = os.listdir(os.path.join(opt.dataset_dir, opt.input_dir))
 	assert image_list == os.listdir(os.path.join(opt.dataset_dir, opt.label_dir)), "images are not paired in {} and {}".format(opt.input_dir, opt.label_dir)
-	
+	# 打乱
 	random.shuffle(image_list)
 	train_size = int(opt.dataset_ratios[0] * len(image_list))
 	train_list = image_list[:train_size]
 	valid_list = image_list[train_size:]
-
-	train_image_list = [os.path.join(opt.dataset_dir, opt.input_dir, it) for it in train_list]
-	train_label_list = [os.path.join(opt.dataset_dir, opt.label_dir, it) for it in train_list]
-	valid_image_list = [os.path.join(opt.dataset_dir, opt.input_dir, it) for it in valid_list]
-	valid_label_list = [os.path.join(opt.dataset_dir, opt.label_dir, it) for it in valid_list]
-
 	print('train  :  {}\nvalid  :  {}'.format(len(train_list), len(valid_list)))
-	
-	# 数据集有点大的时候, 一开始存储路径, 每次用 map 函数读取和预处理图像; 注意 buffer_size 不能太大
-	train_data = tf.data.Dataset.from_tensor_slices((train_image_list, train_label_list))
-	train_data = train_data.map(lambda x, y: \
-		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize]], Tout=[tf.float32, tf.float32]))
-	train_dataloader = train_data.shuffle(opt.buffer_size).batch(opt.train_batch_size)
 
+	return [os.path.join(opt.dataset_dir, opt.input_dir, it) for it in train_list], \
+		[os.path.join(opt.dataset_dir, opt.label_dir, it) for it in train_list], \
+		[os.path.join(opt.dataset_dir, opt.input_dir, it) for it in valid_list], \
+		[os.path.join(opt.dataset_dir, opt.label_dir, it) for it in valid_list]
+
+
+
+
+
+def get_validloader(opt, valid_image_list, valid_label_list):
 	valid_data = tf.data.Dataset.from_tensor_slices((valid_image_list, valid_label_list))
 	valid_data = valid_data.map(lambda x, y: \
-		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize]], Tout=[tf.float32, tf.float32]))
-	valid_dataloader = valid_data.batch(opt.valid_batch_size).repeat(opt.valid_repeat)
+		tf.py_function(load_and_preprocess_augment, inp=[x, y, [False]], Tout=[tf.float32, tf.float32, tf.string]))
+	return valid_data.batch(opt.valid_batch_size).repeat(opt.valid_repeat)
 
-	return train_dataloader, valid_dataloader, len(train_list), len(valid_list)
+
+
+
+def get_trainloader(opt, train_image_list, train_label_list, weights=None):
+	
+	# 根据权重重新构造本次的数据列表啊
+	if(weights is not None):
+		sampled_index = utils.weighted_random(weights, times=len(weights))
+		weighted_train_image_list = [train_image_list[pos] for pos in sampled_index]
+		weighted_train_label_list = [train_label_list[pos] for pos in sampled_index]
+		print('完成采样, {:.3f}'.format(len(set(weighted_train_image_list)) * 1. / len(weighted_train_image_list)))
+	else:
+		weighted_train_image_list, weighted_train_label_list = train_image_list, train_label_list
+	
+	# 数据集有点大的时候, 一开始存储路径, 每次用 map 函数读取和预处理图像; 注意 buffer_size 不能太大
+	train_data = tf.data.Dataset.from_tensor_slices((weighted_train_image_list, weighted_train_label_list))
+
+	train_data = train_data.map(lambda x, y: \
+		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize]], Tout=[tf.float32, tf.float32, tf.string]))
+
+	# 打乱顺序, 并设置 shuffle, 有也可以看看 prefetch
+	# .prefetch(opt.buffer_size)
+	train_dataloader = train_data.shuffle(opt.buffer_size).batch(opt.train_batch_size)
+	return train_dataloader
+
+
+def get_dataloader(opt):
+
+	train_image_list, train_label_list, valid_image_list, valid_label_list = get_datalist(opt)
+
+	return get_trainloader(opt, train_image_list, train_label_list), \
+		get_validloader(opt, valid_image_list, valid_label_list), {
+		"train_image_list": train_image_list, 
+		"train_label_list": train_label_list,
+		"valid_image_list": valid_image_list,
+		"valid_label_list": valid_label_list}

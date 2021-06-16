@@ -1,7 +1,5 @@
 
 # Tensorflow
-import utils
-utils.set_evironments(seed=212)
 import tensorflow as tf
 
 
@@ -34,10 +32,10 @@ class InvertedResidualBlock(tf.keras.layers.Layer):
 
 		self.conv_layer1 = tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(filters, 1, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.LayerNormalization(),
+			tf.keras.layers.BatchNormalization(),
 			SwichActivation(),
 			tf.keras.layers.DepthwiseConv2D(kernel_size, strides, padding='same', use_bias=False, depthwise_initializer=KERNEL_INITIALIZER, depthwise_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.LayerNormalization(),
+			tf.keras.layers.BatchNormalization(),
 			SwichActivation()
 		])
 
@@ -56,7 +54,7 @@ class InvertedResidualBlock(tf.keras.layers.Layer):
 
 		self.conv_layer2 = tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(filters_out, 1, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.LayerNormalization()
+			tf.keras.layers.BatchNormalization()
 		])
 
 
@@ -78,7 +76,7 @@ class GEN(tf.keras.layers.Layer):
 
 		self.conv1 = tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(16, 5, padding='same', use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
-			tf.keras.layers.LayerNormalization(),
+			tf.keras.layers.BatchNormalization(),
 			SwichActivation()
 		])
 
@@ -91,7 +89,7 @@ class GEN(tf.keras.layers.Layer):
 
 		self.conv2 =  tf.keras.models.Sequential([
 			tf.keras.layers.Conv2D(768, 1, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER, name='GEN_stage6_conv'),
-			tf.keras.layers.LayerNormalization(),
+			tf.keras.layers.BatchNormalization(),
 			SwichActivation(),
 			tf.keras.layers.GlobalAveragePooling2D(),
 			tf.keras.layers.Dense(768, use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
@@ -154,9 +152,12 @@ class GleNet(tf.keras.Model):
 		self.residual = residual
 
 
-	def call(self, inputs, training=False):
+	def call(self, inputs, is_training=True):
 
-		x = self.down_sampler(inputs)
+		if(is_training == False):
+			x = self.down_sampler(inputs)
+		else:
+			x = inputs
 		
 		x = self.regressor(x)
 

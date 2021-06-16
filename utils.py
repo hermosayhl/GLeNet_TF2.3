@@ -66,3 +66,32 @@ class Timer:
 		print('耗时  :  {}'.format(_end - self.start))
 
 
+
+
+
+class zero_dict(dict):
+	def __init__(self, init_value=1):
+		self.init_value = init_value
+
+	def __missing__(self, key_value):
+		self[key_value] = self.init_value
+		return self[key_value]
+
+
+
+
+def weighted_random(weights, times=10):
+	total_sum = sum(weights)
+	result_index = []
+	# 随机 10 次
+	for s in range(times):
+		# 得到一个随机值
+		ramdom_value = random.uniform(0, total_sum)
+		# 找到这个随机值在列表中的位置
+		cur_sum = 0.0
+		for cnt, value in enumerate(weights):
+			cur_sum += value
+			if(ramdom_value < cur_sum):
+				result_index.append(cnt)
+				break
+	return result_index
