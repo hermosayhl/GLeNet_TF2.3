@@ -1,0 +1,8 @@
+dill==0.3.3
+h5py==2.10.0
+imageio==2.9.0
+numpy==1.18.5
+opencv-python==4.5.1.48
+scikit-image==0.15.0
+scipy==1.4.1
+tensorflow-gpu==2.3.0

@@ -19,28 +19,29 @@ import tensorflow as tf
 opt = lambda: None
 # 网络参数
 opt.backbone = "GEN"
-opt.residual = True
 opt.low_size = [256, 256]
 # 训练参数
 opt.use_cuda = True
 opt.resize = False
 # 实验参数
-opt.use_local = True
+opt.use_local = False
 opt.images_dir = "./sample_imgs"
-opt.results_dir = "./sample_results"
+# opt.images_dir = "./display/input"
+
 if(opt.use_local == False):
-	opt.config_file = "./checkpoints/batch_4/options.pkl"
-	opt.checkpoints_file = './checkpoints/batch_4/epoch_71_train_24.595_0.885_valid_23.945_0.862/GleNet'
+	opt.results_dir = "./sample_results_GEN"
+	opt.checkpoints_file = './checkpoints/LEN_False_batch_4/epoch_71_train_24.595_0.885_valid_23.945_0.862/GleNet'
 else:
-	opt.config_file = "./checkpoints/LEN_True_batch_4/options.pkl"
+	opt.results_dir = "./sample_results"
 	opt.checkpoints_file = "./checkpoints/LEN_True_batch_4/epoch_88_train_25.148_0.904_valid_24.535_0.887/GleNet"
+
 for l, r in vars(opt).items(): print(l, " : ", r)
 os.makedirs(opt.results_dir, exist_ok=True)
 assert os.path.exists(opt.images_dir), "there are no images in folder {}".format(opt.images_dir)
 assert os.path.exists(os.path.dirname(opt.checkpoints_file)), "checkpoints folder {} doesn't exist !".format(opt.checkpoints_file)
 
 
-network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size, \
+network = model.GleNet(backbone=opt.backbone, low_size=opt.low_size, \
 	use_local=opt.use_local)
 network.built = True
 network.load_weights(opt.checkpoints_file)

@@ -1,2 +1,6 @@
 *.bat
-*.txt
+display
+display/
+display/*
+*.pptx
+.gitignore

@@ -21,7 +21,6 @@ import tensorflow as tf
 opt = lambda: None
 # 网络参数
 opt.backbone = "GEN"
-opt.residual = True
 opt.low_size = [256, 256]
 # 训练参数
 opt.use_cuda = True
@@ -30,8 +29,8 @@ opt.resize = False
 opt.use_local = False
 opt.dataset_dir = "/home/cgy/Chang/image_enhancement/datasets/fiveK"
 if(opt.use_local == False):
-	opt.config_file = "./checkpoints/batch_4/options.pkl"
-	opt.checkpoints_file = './checkpoints/batch_4/epoch_71_train_24.595_0.885_valid_23.945_0.862/GleNet'
+	opt.config_file = "./checkpoints/LEN_False_batch_4/options.pkl"
+	opt.checkpoints_file = './checkpoints/LEN_False_batch_4/epoch_71_train_24.595_0.885_valid_23.945_0.862/GleNet'
 else:
 	opt.config_file = "./checkpoints/LEN_True_batch_4/options.pkl"
 	opt.checkpoints_file = "./checkpoints/LEN_True_batch_4/epoch_88_train_25.148_0.904_valid_24.535_0.887/GleNet"
@@ -42,7 +41,7 @@ assert os.path.exists(opt.dataset_dir), "dataset folder {} doesn't exists !".for
 
 
 
-network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size, \
+network = model.GleNet(backbone=opt.backbone, low_size=opt.low_size, \
 	use_local=opt.use_local)
 network.built = True
 network.load_weights(opt.checkpoints_file)
