@@ -68,6 +68,12 @@ def make_augment(low_quality, high_quality):
 
 
 
+def crop_as_8(image):
+	m, n, _ = image.shape
+	_m, _n = 8 * int(m / 8), 8 * int(n / 8)
+	return image[:_m, :_n]
+
+
 
 
 def load_and_preprocess_augment(_image_path, _label_path, choice):
@@ -78,10 +84,16 @@ def load_and_preprocess_augment(_image_path, _label_path, choice):
 	# 作数据增强
 	low_quality, high_quality = make_augment(low_quality, high_quality)
 
-	# 是否要规范输入大小
+	# 训练时 resize
 	if(choice[0] == True):
 		low_quality = cv2.resize(low_quality, (256, 256))
 		high_quality = cv2.resize(high_quality, (256, 256))
+	# 测试时候, 直接对 8 
+	if(choice[1] == True):
+		low_quality, high_quality = crop_as_8(low_quality), crop_as_8(high_quality)
+		# m, n, _ = low_quality.shape
+		# _m, _n = 8 * int(m / 8), 8 * int(n / 8)
+		# low_quality, high_quality = low_quality[:_m, :_n], high_quality[:_m, :_n]
 
 	# numpy -> tensor
 	low_quality = tf.convert_to_tensor(low_quality * 1. / 255, dtype=tf.float32)
@@ -114,7 +126,7 @@ def get_datalist(opt):
 def get_validloader(opt, valid_image_list, valid_label_list):
 	valid_data = tf.data.Dataset.from_tensor_slices((valid_image_list, valid_label_list))
 	valid_data = valid_data.map(lambda x, y: \
-		tf.py_function(load_and_preprocess_augment, inp=[x, y, [False]], Tout=[tf.float32, tf.float32, tf.string]))
+		tf.py_function(load_and_preprocess_augment, inp=[x, y, [False, opt.use_local]], Tout=[tf.float32, tf.float32, tf.string]))
 	return valid_data.batch(opt.valid_batch_size).repeat(opt.valid_repeat)
 
 
@@ -135,7 +147,7 @@ def get_trainloader(opt, train_image_list, train_label_list, weights=None):
 	train_data = tf.data.Dataset.from_tensor_slices((weighted_train_image_list, weighted_train_label_list))
 
 	train_data = train_data.map(lambda x, y: \
-		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize]], Tout=[tf.float32, tf.float32, tf.string]))
+		tf.py_function(load_and_preprocess_augment, inp=[x, y, [opt.resize, False]], Tout=[tf.float32, tf.float32, tf.string]))
 
 	# 打乱顺序, 并设置 shuffle, 有也可以看看 prefetch
 	# .prefetch(opt.buffer_size)

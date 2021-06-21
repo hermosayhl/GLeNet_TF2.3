@@ -46,11 +46,11 @@ def set_evironments(seed=212):
 
 
 
-def visualize_a_batch(batch_images, save_path):
+def visualize_a_batch(batch_images, save_path, row=2):
 	# tensor -> numpy
     batch_images = (batch_images.numpy() * 255).astype('uint8')
     # (16, 512, 512, 3) -> [4 * 512, 4 * 512, 3]
-    composed_images = numpy.concatenate([numpy.concatenate([batch_images[3 * i + j] for j in range(3)], axis=1) for i in range(3)], axis=0)
+    composed_images = numpy.concatenate([numpy.concatenate([batch_images[row * i + j] for j in range(row)], axis=1) for i in range(row)], axis=0)
     cv2.imwrite(save_path, composed_images)
 
 

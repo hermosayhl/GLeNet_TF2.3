@@ -1,4 +1,5 @@
-
+import utils
+utils.set_evironments(seed=212)
 # Tensorflow
 import tensorflow as tf
 
@@ -106,7 +107,70 @@ class GEN(tf.keras.layers.Layer):
 		x = self.conv2(x)
 
 		return x
+	
+
+
+
+
+class LEN(tf.keras.Model):
+	def __init__(self, **kwargs):
+		super(LEN, self).__init__()
+
+		self.first_conv = tf.keras.models.Sequential([
+			tf.keras.layers.Conv2D(16, 5, padding='same', use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER),
+			tf.keras.layers.BatchNormalization(),
+			tf.keras.layers.Activation('swish')
+		])
+
+		self.down_block_1 = InvertedResidualBlock(16, 24, 5, 2, 6)
+		self.down_block_2 = InvertedResidualBlock(24, 40, 5, 2, 6)
+		self.down_block_3 = InvertedResidualBlock(40, 80, 5, 2, 6)
+		self.down_block_4 = InvertedResidualBlock(80, 40, 5, 1, 6)
+
+
+		self.up_1 = tf.keras.layers.UpSampling2D(interpolation='bilinear')
+		self.cat_1 = tf.keras.layers.Concatenate(axis=-1)
+
+		self.up_block_1 = InvertedResidualBlock(80, 24, 5, 1, 6)
+
+		self.up_2 = tf.keras.layers.UpSampling2D(interpolation='bilinear')
+		self.cat_2 = tf.keras.layers.Concatenate(axis=-1)
+
+		self.up_block_2 = InvertedResidualBlock(48, 16, 5, 1, 6)
+
+		self.up_3 = tf.keras.layers.UpSampling2D(interpolation='bilinear')
+		self.cat_3 = tf.keras.layers.Concatenate(axis=-1)
+
+		self.last_conv = tf.keras.layers.Conv2D(3, 5, padding='same', use_bias=False, kernel_initializer=KERNEL_INITIALIZER, kernel_regularizer=KERNEL_REGULARUZER,)
 		
+		self.add = tf.keras.layers.Add()
+
+
+	def call(self, inputs):
+
+		x1 = self.first_conv(inputs)
+
+		x2 = self.down_block_1(x1)
+		x3 = self.down_block_2(x2)
+		x4 = self.down_block_3(x3)
+		x4 = self.down_block_4(x4)
+		
+		x4 = self.up_1(x4)
+		x3 = self.cat_1([x3, x4])
+		x3 = self.up_block_1(x3)
+
+		x3 = self.up_2(x3)
+		x2 = self.cat_2([x2, x3])
+		x2 = self.up_block_2(x2)
+
+		x2 = self.up_3(x2)
+		x1 = self.cat_3([x1, x2])
+
+		x1 = self.last_conv(x1)
+
+		res = self.add([inputs, x1])
+
+		return res	
 
 
 
@@ -134,12 +198,15 @@ class IntensitiyTransform(tf.keras.layers.Layer):
 
 
 
+
+
+
 	
 	
 
 
 class GleNet(tf.keras.Model):
-	def __init__(self, backbone='GEN', residual=False, low_size=[256, 256], **kwargs):
+	def __init__(self, backbone='GEN', low_size=[256, 256], use_local=False, **kwargs):
 		super(GleNet, self).__init__()
 
 		self.down_sampler = tf.keras.layers.Lambda(tf.image.resize, arguments={'size': low_size})
@@ -149,8 +216,13 @@ class GleNet(tf.keras.Model):
 		# 可以反向传播的映射
 		self.curve_enhancer = IntensitiyTransform(3, 256)
 
-		self.residual = residual
+		self.use_local = use_local
 
+		if(self.use_local == True):
+			self.refine = LEN()
+			print('使用 LEN 局部增强网络')
+
+			
 
 	def call(self, inputs, is_training=True):
 
@@ -158,12 +230,15 @@ class GleNet(tf.keras.Model):
 			x = self.down_sampler(inputs)
 		else:
 			x = inputs
-		
+
 		x = self.regressor(x)
 
 		x = self.curve_enhancer([inputs, x])
 
-		refined = x if(not self.residual) else x + inputs
+		if(self.use_local):
+			refined = self.refine(x)
+		else: 
+			refined = x + inputs
 
 		return tf.clip_by_value(refined, 0, 1)
 
@@ -171,7 +246,8 @@ class GleNet(tf.keras.Model):
 
 if __name__ == '__main__':
 
+
 	
 	network = GleNet(residual=True)
 
-	network.build(input_shape=(4, 224, 256, 3))
+	network.build(input_shape=(4, 216, 256, 3))

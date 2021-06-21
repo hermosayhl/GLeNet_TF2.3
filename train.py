@@ -1,6 +1,7 @@
 # python
 import os
 import sys
+import math
 import random
 import argparse
 # Self
@@ -19,6 +20,7 @@ import tensorflow as tf
 opt = lambda: None
 # 网络参数
 opt.backbone = "GEN"
+opt.use_local = True
 opt.residual = True
 opt.low_size = [256, 256]
 # 训练参数
@@ -31,7 +33,7 @@ opt.valid_repeat = 4
 opt.resize = True
 opt.buffer_size = 64
 # 实验参数
-opt.exp_name = "batch_{}".format(opt.train_batch_size)
+opt.exp_name = "LEN_{}_batch_{}".format(opt.use_local, opt.train_batch_size)
 opt.save = True
 opt.valid_interval = 1
 opt.checkpoints_dir = os.path.join("./checkpoints/", opt.exp_name)
@@ -42,7 +44,7 @@ opt.label_dir = "expertC_gt"
 opt.dataset_dir = '/home/cgy/Chang/image_enhancement/datasets/fiveK'
 # opt.dataset_dir = "C:/Code/HermosaWork/datasets/MIT-Adobe FiveK"
 # 可视化参数
-opt.visualize_size = 9
+opt.visualize_size = 4
 opt.visualize_batch = 100
 opt.visualize_dir = os.path.join(opt.checkpoints_dir, 'train_phase') 
 
@@ -64,7 +66,7 @@ if __name__ == '__main__':
 	train_dataloader, valid_dataloader, split_data = pipeline.get_dataloader(opt)
 
 	# 定义网络结构
-	network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size)
+	network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size, use_local=opt.use_local)
 	network.build(input_shape=(None, None, None, 3))
 
 	# 参数变量
@@ -111,7 +113,9 @@ if __name__ == '__main__':
 					*train_evaluator.get()))
 				# 可视化
 				if(opt.train_batch_size == opt.visualize_size and batch_num % 100 == 0):
-					utils.visualize_a_batch(enhanced, os.path.join(opt.visualize_dir, "epoch_{}_batch_{}.png".format(epoch, batch_num)))
+					utils.visualize_a_batch(enhanced, 
+						os.path.join(opt.visualize_dir, "epoch_{}_batch_{}.png".format(epoch, batch_num)), 
+						row=int(math.sqrt(opt.visualize_size)))
 		train_loss, train_color_loss, train_perceptual_loss, train_psnr, train_ssim = train_evaluator.get()
 		print()
 

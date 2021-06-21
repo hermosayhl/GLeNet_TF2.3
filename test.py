@@ -27,9 +27,14 @@ opt.low_size = [256, 256]
 opt.use_cuda = True
 opt.resize = False
 # 实验参数
-opt.config_file = "./checkpoints/weighted_batch_4/options.pkl"
+opt.use_local = False
 opt.dataset_dir = "/home/cgy/Chang/image_enhancement/datasets/fiveK"
-opt.checkpoints_file = './checkpoints/weighted_batch_4/epoch_2_train_22.289_0.834_valid_22.375_0.823/GleNet'
+if(opt.use_local == False):
+	opt.config_file = "./checkpoints/batch_4/options.pkl"
+	opt.checkpoints_file = './checkpoints/batch_4/epoch_71_train_24.595_0.885_valid_23.945_0.862/GleNet'
+else:
+	opt.config_file = "./checkpoints/LEN_True_batch_4/options.pkl"
+	opt.checkpoints_file = "./checkpoints/LEN_True_batch_4/epoch_88_train_25.148_0.904_valid_24.535_0.887/GleNet"
 for l, r in vars(opt).items(): print(l, " : ", r)
 assert os.path.exists(os.path.dirname(opt.checkpoints_file)), "checkpoints folder {} doesn't exists !".format(opt.checkpoints_file)
 assert os.path.exists(opt.dataset_dir), "dataset folder {} doesn't exists !".format(opt.dataset_dir)
@@ -37,7 +42,8 @@ assert os.path.exists(opt.dataset_dir), "dataset folder {} doesn't exists !".for
 
 
 
-network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size)
+network = model.GleNet(backbone=opt.backbone, residual=opt.residual, low_size=opt.low_size, \
+	use_local=opt.use_local)
 network.built = True
 network.load_weights(opt.checkpoints_file)
 print('loaded weights from {}'.format(opt.checkpoints_file))
@@ -62,10 +68,13 @@ mean_ssim = 0
 with utils.Timer() as time_scope:
 	for cnt, image_path in enumerate(images_list, 1):
 		origin = cv2.imread(image_path)
+		label = cv2.imread(labels_list[cnt - 1])
+		if(opt.use_local == True):
+			origin = pipeline.crop_as_8(origin)
+			label = pipeline.crop_as_8(label)
 		origin_tensor = pre_transform(origin)
 		enhanced = network(origin_tensor, is_training=False)
 		enhanced = post_transform(enhanced)
-		label = cv2.imread(labels_list[cnt - 1])
 		psnr_value = skimage.measure.compare_psnr(enhanced, label)
 		ssim_value = skimage.measure.compare_ssim(enhanced, label, multichannel=True)
 		mean_psnr += psnr_value
